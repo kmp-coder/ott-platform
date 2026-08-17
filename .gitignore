@@ -1,0 +1,9 @@
+# Dependencies (recreated by "npm install")
+node_modules/
+
+# Runtime data — NEVER commit: contains accounts, Aadhaar digits, PAN,
+# bank details and uploaded videos. Recreated automatically on first run.
+data/
+
+# Local tooling
+.claude/

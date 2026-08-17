@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Watch — RangManch</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .player-wrap { max-width: 1000px; margin: 30px auto; padding: 0 4vw; }
+  video { width: 100%; border-radius: 12px; background: #000; aspect-ratio: 16/9; box-shadow: 0 24px 70px rgba(0,0,0,.55); }
+  .meta-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 20px 0 8px; }
+  .view-note { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 15px 18px; font-size: 13.5px; color: var(--muted); margin-top: 20px; line-height: 1.65; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="/"><span class="mark">R</span>Rang<span class="brand-2">Manch</span></a>
+  <div class="spacer"></div>
+  <a class="navlink" href="/">← Back to Browse</a>
+</div>
+
+<div class="player-wrap" id="box">
+  <div class="empty">Loading…</div>
+</div>
+
+<!-- renew modal (shown when subscription has expired) -->
+<div class="modal-back" id="renewModal">
+  <div class="modal">
+    <h2>Renew your plan</h2>
+    <p class="hint">Your subscription has expired. Renew to continue watching.</p>
+    <div class="plan-pick">
+      <div class="plan-card selected" id="rw_monthly" onclick="pickRw('monthly')">
+        <div class="pc-name">1 Month</div><div class="pc-price">₹19</div>
+      </div>
+      <div class="plan-card" id="rw_yearly" onclick="pickRw('yearly')">
+        <span class="pc-tag">BEST VALUE</span>
+        <div class="pc-name">12 Months</div><div class="pc-price">₹30</div>
+      </div>
+    </div>
+    <button class="btn teal" style="width:100%;margin-top:16px" id="rwBtn" onclick="doRw()">Pay ₹19 &amp; Renew (Demo)</button>
+    <a class="btn ghost" style="width:100%;margin-top:10px" href="/">Back to Browse</a>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+const cid = new URLSearchParams(location.search).get('id');
+let fastForwarded = false, watchedSeconds = 0, lastT = 0, reported = false;
+let rwPlan = 'monthly';
+const RW_PRICE = { monthly: 19, yearly: 30 };
+
+function pickRw(p) {
+  rwPlan = p;
+  document.getElementById('rw_monthly').classList.toggle('selected', p === 'monthly');
+  document.getElementById('rw_yearly').classList.toggle('selected', p === 'yearly');
+  document.getElementById('rwBtn').innerHTML = 'Pay ₹' + RW_PRICE[p] + ' &amp; Renew (Demo)';
+}
+async function doRw() {
+  try {
+    const r = await API.call('/api/subscriber/renew', { method: 'POST', body: { plan: rwPlan } });
+    toast('✅ Renewed till ' + dt(r.subscription.expiresAt), 'ok');
+    document.getElementById('renewModal').classList.remove('open');
+    init();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function init() {
+  if (!localStorage.getItem('sub_token')) { location.href = '/'; return; }
+  let c;
+  try { c = await API.call('/api/watch/' + cid); }
+  catch (e) {
+    if (e.code === 'SUB_EXPIRED') { document.getElementById('renewModal').classList.add('open'); return; }
+    document.getElementById('box').innerHTML = '<div class="empty">🚫 ' + esc(e.message) + '<br><br><a class="btn" href="/">Back to Browse</a></div>';
+    return;
+  }
+  const box = document.getElementById('box');
+  box.innerHTML =
+    '<video id="vid" controls playsinline src="' + esc(c.videoUrl) + '"></video>' +
+    '<div class="meta-row"><h1 style="font-size:26px;flex:1" id="t"></h1>' +
+    '<span class="pill info">' + esc(c.language) + '</span>' +
+    '<span class="pill info">' + esc(c.typeLabel) + '</span>' +
+    '<span class="pill ' + (c.ageRating === 'A' ? 'rejected' : 'approved') + '">' + esc(c.ageRating) + '</span></div>' +
+    '<p style="color:var(--muted);line-height:1.6" id="d"></p>' +
+    '<p style="margin-top:10px;font-size:14px">By <b id="cn"></b> · ' + c.views + ' verified views' + (c.seriesName ? ' · ' + esc(c.seriesName) + (c.episode ? ' — Episode ' + esc(c.episode) : '') : '') + '</p>' +
+    '<div class="view-note" id="note">ℹ️ <b>How views are counted:</b> your view supports this creator only if you watch the video fully <b>without fast-forwarding</b> (rewinding is fine). You are counted once per title, no matter how many times you re-watch.' + (c.alreadyViewed ? '<br>✅ You have already been counted for this title.' : '') + '</div>';
+  document.getElementById('t').textContent = c.title;
+  document.getElementById('d').textContent = c.description;
+  document.getElementById('cn').textContent = c.creatorName;
+  if (c.alreadyViewed) reported = true;
+
+  const v = document.getElementById('vid');
+  let maxReached = 0;
+  v.addEventListener('timeupdate', () => {
+    const t = v.currentTime;
+    if (t > lastT && t - lastT < 2) watchedSeconds += (t - lastT); // normal playback only
+    lastT = t;
+    if (t > maxReached) maxReached = t;
+  });
+  v.addEventListener('seeking', () => {
+    if (v.currentTime > maxReached + 2) {
+      fastForwarded = true;
+      toast('⏩ Fast-forward detected — this play will not count as a view', 'error');
+    }
+    lastT = v.currentTime;
+  });
+  v.addEventListener('ended', async () => {
+    if (reported) return;
+    try {
+      const r = await API.call('/api/watch/' + cid + '/complete', { method: 'POST', body: { completed: true, fastForwarded, watchedSeconds, duration: v.duration } });
+      reported = r.counted;
+      if (r.counted) toast('✅ Your view has been counted — thank you for supporting the creator!', 'ok');
+      else toast(r.reason, 'error');
+    } catch (e) { toast(e.message, 'error'); }
+  });
+}
+init();
+</script>
+</body>
+</html>

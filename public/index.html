@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RangManch — Unlimited entertainment, in your language</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <a class="logo" href="/"><span class="mark">R</span>Rang<span class="brand-2">Manch</span></a>
+  <a class="navlink" href="#" onclick="setType('');return false">Home</a>
+  <a class="navlink" href="#" onclick="setType('movie');return false">Movies</a>
+  <a class="navlink" href="#" onclick="setType('series');return false">Web Series</a>
+  <a class="navlink" href="#" onclick="setType('song');return false">Music</a>
+  <a class="navlink" href="#" onclick="setType('short');return false">Shorts</a>
+  <div class="spacer"></div>
+  <input id="q" placeholder="🔍 Search" style="max-width:220px" onkeydown="if(event.key==='Enter')loadContent()">
+  <span id="who" style="color:var(--text);font-weight:700;font-size:14px;display:none;cursor:pointer" onclick="openAccount()"></span>
+  <button class="btn small ghost" id="loginBtn" onclick="openAuth('login')">Sign In</button>
+  <button class="btn small" id="signupBtn" onclick="openAuth('signup')">Join Now</button>
+</div>
+
+<!-- billboard hero -->
+<div class="billboard" id="billboard">
+  <div class="bb-bg" id="bbBg"></div>
+  <div class="bb-shade"></div>
+  <div class="bb-content">
+    <div class="bb-kicker"><span class="k-badge" id="bbBadge">Featured</span><span class="k-meta" id="bbMeta"></span></div>
+    <h1 id="bbTitle">Unlimited movies, web series &amp; music</h1>
+    <p class="bb-desc" id="bbDesc">Stories, songs and cinema in Hindi, English, Gujarati, Bhojpuri and more — from India's independent creators. Plans start at just ₹19.</p>
+    <div class="bb-actions">
+      <button class="btn play" id="bbPlay">▶&nbsp; Play</button>
+      <button class="btn secondary" onclick="openAuth('signup')" id="bbJoin">Join from ₹19</button>
+    </div>
+  </div>
+</div>
+
+<div class="plan-strip" id="planStrip">
+  <span class="ps-title">🎬 One subscription. Everything on RangManch.</span>
+  <span class="ps-item">1 Month — <b>₹19</b></span>
+  <span class="ps-item">12 Months — <b>₹30</b> <span style="color:var(--teal);font-weight:700">Best value</span></span>
+  <span style="flex:1"></span>
+  <button class="btn small" onclick="openAuth('signup')" id="psJoin">Get Started</button>
+</div>
+
+<div class="chip-row" id="langChips"></div>
+
+<div id="rows"></div>
+
+<div class="site-footer">
+  <span>© 2026 RangManch. Made for every age, every language.</span>
+  <span><a href="/creator.html" style="color:var(--muted)">Creator Studio</a> &nbsp;·&nbsp; <a href="/admin.html" style="color:var(--muted)">Admin</a></span>
+</div>
+
+<!-- auth modal -->
+<div class="modal-back" id="authModal">
+  <div class="modal">
+    <button class="close" onclick="closeAuth()">✕</button>
+
+    <div id="loginPane">
+      <h2>Sign in</h2>
+      <p class="hint">Use your registered e-mail or mobile — we'll send an OTP.</p>
+      <label>E-mail or 10-digit mobile</label>
+      <input id="li_id" placeholder="you@example.com or 9876543210">
+      <label>OTP</label>
+      <div class="otp-row">
+        <input id="li_otp" placeholder="6-digit OTP" maxlength="6">
+        <button class="btn secondary small" onclick="sendLoginOtp()">Send OTP</button>
+      </div>
+      <div class="otp-hint" id="li_hint"></div>
+      <button class="btn" style="width:100%;margin-top:16px" onclick="doLogin()">Sign In</button>
+      <p class="hint" style="margin-top:14px">New to RangManch? <a href="#" style="color:var(--gold)" onclick="openAuth('signup');return false">Join now</a></p>
+    </div>
+
+    <div id="signupPane" style="display:none">
+      <h2>Join RangManch</h2>
+      <p class="hint">Quick one-time setup: contact OTP, Aadhaar age verification, and your plan.</p>
+      <label>Full name</label>
+      <input id="su_name" placeholder="Your name">
+      <div class="grid2">
+        <div><label>E-mail</label><input id="su_email" placeholder="you@example.com"></div>
+        <div><label>Mobile (10 digits)</label><input id="su_mobile" placeholder="9876543210" maxlength="10"></div>
+      </div>
+      <label>E-mail / mobile OTP</label>
+      <div class="otp-row">
+        <input id="su_otp" placeholder="6-digit OTP" maxlength="6">
+        <button class="btn secondary small" onclick="sendSignupOtp()">Send OTP</button>
+      </div>
+      <div class="otp-hint" id="su_hint"></div>
+
+      <hr class="divider">
+      <div class="grid2">
+        <div><label>Aadhaar number (12 digits)</label><input id="su_aadhaar" placeholder="XXXX XXXX XXXX" maxlength="12"></div>
+        <div><label>Date of birth (as per Aadhaar)</label><input id="su_dob" type="date"></div>
+      </div>
+      <label>Aadhaar OTP</label>
+      <div class="otp-row">
+        <input id="su_aotp" placeholder="6-digit OTP" maxlength="6">
+        <button class="btn secondary small" onclick="sendAadhaarOtp()">Send Aadhaar OTP</button>
+      </div>
+      <div class="otp-hint" id="su_ahint"></div>
+
+      <hr class="divider">
+      <label style="margin-top:0">Choose your plan</label>
+      <div class="plan-pick">
+        <div class="plan-card selected" id="plan_monthly" onclick="pickPlan('monthly')">
+          <div class="pc-name">1 Month</div>
+          <div class="pc-price">₹19</div>
+          <div class="pc-note">Billed monthly</div>
+        </div>
+        <div class="plan-card" id="plan_yearly" onclick="pickPlan('yearly')">
+          <span class="pc-tag">BEST VALUE</span>
+          <div class="pc-name">12 Months</div>
+          <div class="pc-price">₹30</div>
+          <div class="pc-note">Full year, one payment</div>
+        </div>
+      </div>
+      <button class="btn" style="width:100%;margin-top:18px" id="suBtn" onclick="doSignup()">Pay ₹19 &amp; Start Watching (Demo)</button>
+      <p class="hint" style="margin-top:12px">Demo mode: no real money is charged. A payment gateway is connected before launch.</p>
+      <p class="hint">Already a member? <a href="#" style="color:var(--gold)" onclick="openAuth('login');return false">Sign in</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- account / renew modal -->
+<div class="modal-back" id="accountModal">
+  <div class="modal">
+    <button class="close" onclick="document.getElementById('accountModal').classList.remove('open')">✕</button>
+    <h2>My account</h2>
+    <div id="accBox" style="line-height:2;font-size:15px;margin:10px 0"></div>
+    <label>Renew / extend plan</label>
+    <div class="plan-pick">
+      <div class="plan-card selected" id="rplan_monthly" onclick="pickRenewPlan('monthly')">
+        <div class="pc-name">1 Month</div><div class="pc-price">₹19</div>
+      </div>
+      <div class="plan-card" id="rplan_yearly" onclick="pickRenewPlan('yearly')">
+        <span class="pc-tag">BEST VALUE</span>
+        <div class="pc-name">12 Months</div><div class="pc-price">₹30</div>
+      </div>
+    </div>
+    <button class="btn teal" style="width:100%;margin-top:16px" id="renewBtn" onclick="doRenew()">Pay ₹19 &amp; Renew (Demo)</button>
+    <button class="btn ghost" style="width:100%;margin-top:10px" onclick="logout()">Sign out</button>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+let curType = '', curLang = '', selPlan = 'monthly', selRenewPlan = 'monthly';
+const PLAN_PRICE = { monthly: 19, yearly: 30 };
+
+function pickPlan(p) {
+  selPlan = p;
+  document.getElementById('plan_monthly').classList.toggle('selected', p === 'monthly');
+  document.getElementById('plan_yearly').classList.toggle('selected', p === 'yearly');
+  document.getElementById('suBtn').innerHTML = 'Pay ₹' + PLAN_PRICE[p] + ' &amp; Start Watching (Demo)';
+}
+function pickRenewPlan(p) {
+  selRenewPlan = p;
+  document.getElementById('rplan_monthly').classList.toggle('selected', p === 'monthly');
+  document.getElementById('rplan_yearly').classList.toggle('selected', p === 'yearly');
+  document.getElementById('renewBtn').innerHTML = 'Pay ₹' + PLAN_PRICE[p] + ' &amp; Renew (Demo)';
+}
+
+function refreshAuthUi() {
+  const name = localStorage.getItem('sub_name');
+  document.getElementById('who').style.display = name ? '' : 'none';
+  document.getElementById('who').textContent = name ? '👤 ' + name : '';
+  document.getElementById('loginBtn').style.display = name ? 'none' : '';
+  document.getElementById('signupBtn').style.display = name ? 'none' : '';
+  document.getElementById('planStrip').style.display = name ? 'none' : '';
+}
+function logout() {
+  localStorage.removeItem('sub_token'); localStorage.removeItem('sub_name');
+  document.getElementById('accountModal').classList.remove('open');
+  refreshAuthUi(); toast('Signed out', 'ok');
+}
+
+async function openAccount() {
+  try {
+    const me = await API.call('/api/subscriber/me');
+    const s = me.subscription;
+    document.getElementById('accBox').innerHTML =
+      '<b>' + esc(me.name) + '</b> · verified age ' + me.age +
+      '<br>Plan: <b>' + esc(s ? s.label : '—') + '</b> ' +
+      (me.active ? '<span class="pill active">Active</span>' : '<span class="pill expired">Expired</span>') +
+      (s ? '<br>Valid till: <b>' + dt(s.expiresAt) + '</b>' : '');
+    document.getElementById('accountModal').classList.add('open');
+  } catch (e) { toast(e.message, 'error'); }
+}
+async function doRenew() {
+  try {
+    const r = await API.call('/api/subscriber/renew', { method: 'POST', body: { plan: selRenewPlan } });
+    toast('✅ Plan renewed till ' + dt(r.subscription.expiresAt), 'ok');
+    openAccount();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+function openAuth(which) {
+  document.getElementById('authModal').classList.add('open');
+  document.getElementById('loginPane').style.display = which === 'login' ? '' : 'none';
+  document.getElementById('signupPane').style.display = which === 'signup' ? '' : 'none';
+}
+function closeAuth() { document.getElementById('authModal').classList.remove('open'); }
+
+function sendLoginOtp() {
+  const v = document.getElementById('li_id').value.trim();
+  if (!v) return toast('Enter your e-mail or mobile first', 'error');
+  requestOtp(/^\d{10}$/.test(v) ? 'mobile' : 'email', v, document.getElementById('li_hint'));
+}
+function sendSignupOtp() {
+  const e = document.getElementById('su_email').value.trim();
+  const m = document.getElementById('su_mobile').value.trim();
+  if (e) requestOtp('email', e, document.getElementById('su_hint'));
+  else if (m) requestOtp('mobile', m, document.getElementById('su_hint'));
+  else toast('Enter e-mail or mobile first', 'error');
+}
+function sendAadhaarOtp() {
+  const a = document.getElementById('su_aadhaar').value.trim();
+  if (!/^\d{12}$/.test(a)) return toast('Enter your 12-digit Aadhaar number first', 'error');
+  requestOtp('aadhaar', a, document.getElementById('su_ahint'));
+}
+
+async function doLogin() {
+  try {
+    const r = await API.call('/api/subscriber/login', { method: 'POST', body: { identifier: document.getElementById('li_id').value.trim(), otp: document.getElementById('li_otp').value.trim() } });
+    localStorage.setItem('sub_token', r.token); localStorage.setItem('sub_name', r.name);
+    closeAuth(); refreshAuthUi(); toast('Welcome back, ' + r.name + '!', 'ok');
+  } catch (e) { toast(e.message, 'error'); }
+}
+async function doSignup() {
+  try {
+    const r = await API.call('/api/subscriber/signup', { method: 'POST', body: {
+      name: document.getElementById('su_name').value.trim(),
+      email: document.getElementById('su_email').value.trim(),
+      mobile: document.getElementById('su_mobile').value.trim(),
+      contactOtp: document.getElementById('su_otp').value.trim(),
+      aadhaar: document.getElementById('su_aadhaar').value.trim(),
+      aadhaarOtp: document.getElementById('su_aotp').value.trim(),
+      dob: document.getElementById('su_dob').value,
+      plan: selPlan
+    }});
+    localStorage.setItem('sub_token', r.token); localStorage.setItem('sub_name', r.name);
+    closeAuth(); refreshAuthUi();
+    toast('🎉 Welcome! ' + r.subscription.label + ' plan active till ' + dt(r.subscription.expiresAt), 'ok');
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+function requireLoginThenWatch(c) {
+  if (!localStorage.getItem('sub_token')) { toast('Sign in or join to start watching', 'error'); openAuth('login'); return; }
+  location.href = '/watch.html?id=' + c.id;
+}
+
+function setType(t) {
+  curType = t;
+  loadContent();
+  window.scrollTo({ top: curType || curLang ? document.getElementById('langChips').offsetTop - 80 : 0, behavior: 'smooth' });
+}
+function setLang(l) { curLang = curLang === l ? '' : l; renderChips(); loadContent(); }
+
+let LANGS = [];
+function renderChips() {
+  const el = document.getElementById('langChips');
+  el.innerHTML = '';
+  const all = document.createElement('button');
+  all.className = 'chip' + (curLang ? '' : ' active');
+  all.textContent = 'All languages'; all.onclick = () => setLang('');
+  el.appendChild(all);
+  LANGS.forEach(l => {
+    const b = document.createElement('button');
+    b.className = 'chip' + (curLang === l ? ' active' : '');
+    b.textContent = l; b.onclick = () => setLang(l);
+    el.appendChild(b);
+  });
+}
+
+function billboard(list) {
+  const feat = list.find(c => c.type === 'movie') || list[0];
+  if (!feat) return;
+  document.getElementById('bbBg').style.cssText = posterBg(feat) + ';filter:saturate(1.1)';
+  document.getElementById('bbBadge').textContent = feat.typeLabel;
+  document.getElementById('bbMeta').textContent = feat.language.toUpperCase() + ' · RATED ' + feat.ageRating + ' · BY ' + feat.creatorName.toUpperCase();
+  document.getElementById('bbTitle').textContent = feat.title;
+  document.getElementById('bbDesc').textContent = feat.description || '';
+  document.getElementById('bbPlay').onclick = () => requireLoginThenWatch(feat);
+}
+
+const TYPE_ORDER = [['movie', 'Movies'], ['series', 'Web Series'], ['song', 'Songs & Albums'], ['short', 'Short Movies & Videos']];
+
+function rail(label, items) {
+  const rail = document.createElement('div');
+  rail.className = 'rail';
+  rail.innerHTML = '<div class="rail-head"><h2>' + label + '</h2><span class="count">' + items.length + ' title' + (items.length > 1 ? 's' : '') + '</span></div>' +
+    '<div class="rail-body"><button class="rail-btn prev">‹</button><div class="rail-track"></div><button class="rail-btn next">›</button></div>';
+  const track = rail.querySelector('.rail-track');
+  items.forEach(c => track.appendChild(posterCard(c, requireLoginThenWatch)));
+  rail.querySelector('.prev').onclick = () => track.scrollBy({ left: -track.clientWidth * .8, behavior: 'smooth' });
+  rail.querySelector('.next').onclick = () => track.scrollBy({ left: track.clientWidth * .8, behavior: 'smooth' });
+  return rail;
+}
+
+async function loadContent() {
+  const q = document.getElementById('q').value.trim();
+  const params = new URLSearchParams();
+  if (q) params.set('q', q);
+  if (curLang) params.set('language', curLang);
+  if (curType) params.set('type', curType);
+  const list = await API.call('/api/content?' + params);
+  const rows = document.getElementById('rows');
+  rows.innerHTML = '';
+  if (!q && !curLang && !curType) billboard(list);
+  if (!list.length) { rows.innerHTML = '<div class="empty">Nothing found — try another language or category.</div>'; return; }
+  if (q) { // search → grid
+    const grid = document.createElement('div');
+    grid.className = 'poster-grid'; grid.style.marginTop = '30px';
+    list.forEach(c => grid.appendChild(posterCard(c, requireLoginThenWatch)));
+    rows.appendChild(grid);
+    return;
+  }
+  for (const [type, label] of TYPE_ORDER) {
+    const items = list.filter(c => c.type === type);
+    if (items.length) rows.appendChild(rail(label, items));
+  }
+}
+
+fetch('/api/meta').then(r => r.json()).then(m => { LANGS = m.languages; renderChips(); });
+refreshAuthUi();
+loadContent();
+</script>
+</body>
+</html>

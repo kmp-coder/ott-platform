@@ -1,0 +1,14 @@
+{
+  "name": "rangmanch-ott",
+  "version": "1.0.0",
+  "description": "RangManch OTT - multi-language streaming platform with creator, subscriber and admin portals",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1",
+    "xlsx": "^0.18.5"
+  }
+}

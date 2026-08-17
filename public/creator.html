@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Creator Studio — RangManch</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .auth-box { max-width: 560px; margin: 40px auto; padding: 0 4vw; }
+  .steps { display: flex; gap: 8px; margin: 18px 0 8px; }
+  .step { flex: 1; text-align: center; font-size: 12px; font-weight: 700; color: var(--muted); padding: 8px 4px; border-bottom: 3px solid var(--border); }
+  .step.done { color: var(--teal); border-color: var(--teal); }
+  .step.now { color: var(--gold); border-color: var(--gold); }
+  .content-thumb { width: 90px; height: 56px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; background-size: cover; background-position: center; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="/"><span class="mark">R</span>Rang<span class="brand-2">Manch</span></a>
+  <span style="color:var(--muted);font-weight:700;font-size:14px">Creator Studio</span>
+  <div class="spacer"></div>
+  <a class="navlink" href="/">Viewer Site</a>
+  <button class="btn small ghost" id="logoutBtn" style="display:none" onclick="logout()">Sign Out</button>
+</div>
+
+<!-- ============ AUTH ============ -->
+<div class="auth-box" id="authBox">
+  <div class="card">
+    <div class="tabs">
+      <button class="tab active" id="tabLogin" onclick="showPane('login')">Login</button>
+      <button class="tab" id="tabSignup" onclick="showPane('signup')">New Creator Sign-up</button>
+    </div>
+
+    <div id="paneLogin">
+      <h2>Creator login</h2>
+      <p class="hint">Log in with your registered e-mail or mobile via OTP.</p>
+      <label>E-mail or 10-digit mobile</label>
+      <input id="cl_id" placeholder="you@studio.com or 9876543210">
+      <label>OTP</label>
+      <div class="otp-row">
+        <input id="cl_otp" placeholder="6-digit OTP" maxlength="6">
+        <button class="btn secondary small" onclick="clSendOtp()">Send OTP</button>
+      </div>
+      <div class="otp-hint" id="cl_hint"></div>
+      <button class="btn" style="width:100%;margin-top:16px" onclick="clLogin()">Login</button>
+    </div>
+
+    <div id="paneSignup" style="display:none">
+      <h2>Become a creator 🎬</h2>
+      <p class="hint">One-time verification: contact OTP → Aadhaar identity → PAN &amp; bank details for payouts.</p>
+      <div class="steps">
+        <div class="step now">1. Contact</div><div class="step">2. Aadhaar KYC</div><div class="step">3. PAN &amp; Bank</div>
+      </div>
+      <label>Full name / studio name</label>
+      <input id="cs_name" placeholder="e.g. Meera Films">
+      <div class="grid2">
+        <div><label>E-mail</label><input id="cs_email" placeholder="you@studio.com"></div>
+        <div><label>Mobile (10 digits)</label><input id="cs_mobile" placeholder="9876543210" maxlength="10"></div>
+      </div>
+      <label>E-mail / mobile OTP</label>
+      <div class="otp-row">
+        <input id="cs_otp" placeholder="6-digit OTP" maxlength="6">
+        <button class="btn secondary small" onclick="csSendOtp()">Send OTP</button>
+      </div>
+      <div class="otp-hint" id="cs_hint"></div>
+
+      <hr style="border-color:#2c2447;margin:20px 0">
+      <h3 style="font-size:16px">🪪 Aadhaar identity verification</h3>
+      <label>Aadhaar number (12 digits)</label>
+      <input id="cs_aadhaar" placeholder="XXXX XXXX XXXX" maxlength="12">
+      <label>Aadhaar OTP</label>
+      <div class="otp-row">
+        <input id="cs_aotp" placeholder="6-digit OTP" maxlength="6">
+        <button class="btn secondary small" onclick="csSendAadhaarOtp()">Send Aadhaar OTP</button>
+      </div>
+      <div class="otp-hint" id="cs_ahint"></div>
+
+      <hr style="border-color:#2c2447;margin:20px 0">
+      <h3 style="font-size:16px">💰 PAN &amp; bank details (for your payouts)</h3>
+      <label>Permanent Account Number (PAN)</label>
+      <input id="cs_pan" placeholder="ABCDE1234F" maxlength="10" style="text-transform:uppercase">
+      <label>Name of account holder</label>
+      <input id="cs_holder" placeholder="As per bank records">
+      <div class="grid2">
+        <div><label>Account number</label><input id="cs_acc" placeholder="9–18 digits"></div>
+        <div><label>IFSC code</label><input id="cs_ifsc" placeholder="SBIN0001234" maxlength="11" style="text-transform:uppercase"></div>
+      </div>
+      <div class="grid2">
+        <div><label>Bank name</label><input id="cs_bank" placeholder="State Bank of India"></div>
+        <div><label>Branch</label><input id="cs_branch" placeholder="Andheri West"></div>
+      </div>
+      <button class="btn teal" style="width:100%;margin-top:18px" onclick="csSignup()">Verify &amp; Create Creator Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ DASHBOARD ============ -->
+<div class="wrap" id="dash" style="display:none">
+  <div class="section-head" style="margin-top:14px">
+    <div style="flex:1">
+      <h1 class="page" style="margin:0">Hello, <span id="dName"></span> 👋</h1>
+      <p class="sub" style="margin:4px 0 0">Upload content, track approvals and watch your earnings grow.</p>
+    </div>
+    <button class="btn small teal" onclick="downloadReport('/api/creator/report.xlsx','creator_token','my-rangmanch-earnings.xlsx')">📥 Download Excel Report</button>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat"><div class="n" id="stEarn">₹0</div><div class="l">Total earnings</div></div>
+    <div class="stat"><div class="n" id="stContent">0</div><div class="l">Uploads</div></div>
+    <div class="stat"><div class="n" id="stApproved">0</div><div class="l">Live on platform</div></div>
+    <div class="stat"><div class="n" id="stViews">0</div><div class="l">Verified views</div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" id="t_content" onclick="showTab('content')">📼 My Content</button>
+    <button class="tab" id="t_upload" onclick="showTab('upload')">⬆️ Upload New</button>
+    <button class="tab" id="t_earnings" onclick="showTab('earnings')">💰 Earnings</button>
+    <button class="tab" id="t_profile" onclick="showTab('profile')">🪪 My KYC &amp; Bank</button>
+  </div>
+
+  <div id="tab_content" class="card">
+    <div class="table-scroll"><table class="data" id="contentTable">
+      <thead><tr><th></th><th>Title</th><th>Type / Language</th><th>Status</th><th>Payment plan</th><th>Views</th><th>Earnings</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div class="empty" id="contentEmpty" style="display:none">No uploads yet — click “Upload New” to publish your first title!</div>
+  </div>
+
+  <div id="tab_upload" class="card" style="display:none;max-width:640px">
+    <h2>Upload new content</h2>
+    <p class="hint">Your upload goes to the platform administrator for review. It is telecast only after approval, and the payment plan is fixed at approval time.</p>
+    <label>Title *</label>
+    <input id="up_title" placeholder="e.g. Monsoon Melodies">
+    <label>Description</label>
+    <textarea id="up_desc" rows="3" placeholder="Tell viewers what it's about…"></textarea>
+    <div class="grid2">
+      <div><label>Type *</label>
+        <select id="up_type" onchange="document.getElementById('seriesExtra').style.display = this.value==='series' ? '' : 'none'">
+          <option value="song">🎵 Song / Album</option>
+          <option value="short">🎬 Short Movie / Video</option>
+          <option value="movie">🍿 Movie</option>
+          <option value="series">📺 Web Series</option>
+        </select>
+      </div>
+      <div><label>Language *</label><select id="up_lang"></select></div>
+    </div>
+    <div class="grid2" id="seriesExtra" style="display:none">
+      <div><label>Series name</label><input id="up_series" placeholder="e.g. Mumbai Nights"></div>
+      <div><label>Episode number</label><input id="up_ep" placeholder="e.g. 1"></div>
+    </div>
+    <label>Age rating</label>
+    <select id="up_rating">
+      <option value="U">U — suitable for all ages</option>
+      <option value="UA">U/A — parental guidance</option>
+      <option value="A">A — adults only (18+)</option>
+    </select>
+    <label>Video file (mp4/webm, up to 500 MB)</label>
+    <input type="file" id="up_video" accept="video/*">
+    <label>…or paste a video link instead</label>
+    <input id="up_url" placeholder="https://…/video.mp4">
+    <label>Thumbnail image (optional)</label>
+    <input type="file" id="up_thumb" accept="image/*">
+    <button class="btn" style="width:100%;margin-top:18px" id="upBtn" onclick="doUpload()">Submit for Approval</button>
+  </div>
+
+  <div id="tab_earnings" class="card" style="display:none">
+    <div class="section-head">
+      <h2>Earnings statement</h2>
+      <button class="btn small teal" onclick="downloadReport('/api/creator/report.xlsx','creator_token','my-rangmanch-earnings.xlsx')">📥 Download as Excel (.xlsx)</button>
+    </div>
+    <p class="hint">Calculated automatically. <b>Upfront</b>: fixed amount paid once your content is approved. <b>Per-view</b>: rate × verified views (full watch, no fast-forward, one view per subscriber).</p>
+    <div class="table-scroll"><table class="data" id="earnTable">
+      <thead><tr><th>Title</th><th>Plan</th><th>Verified views</th><th>Earning</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <h3 style="text-align:right;margin-top:16px">Total payable: <span id="earnTotal" style="color:var(--teal)">₹0</span></h3>
+  </div>
+
+  <div id="tab_profile" class="card" style="display:none;max-width:560px">
+    <h2>My verification &amp; payout details</h2>
+    <div id="profileBox" style="line-height:2.1;font-size:15px"></div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+const TK = { tokenKey: 'creator_token' };
+function ctoken() { return localStorage.getItem('creator_token'); }
+function logout() { localStorage.removeItem('creator_token'); location.reload(); }
+
+function showPane(p) {
+  document.getElementById('paneLogin').style.display = p === 'login' ? '' : 'none';
+  document.getElementById('paneSignup').style.display = p === 'signup' ? '' : 'none';
+  document.getElementById('tabLogin').classList.toggle('active', p === 'login');
+  document.getElementById('tabSignup').classList.toggle('active', p === 'signup');
+}
+function showTab(t) {
+  for (const x of ['content','upload','earnings','profile']) {
+    document.getElementById('tab_' + x).style.display = x === t ? '' : 'none';
+    document.getElementById('t_' + x).classList.toggle('active', x === t);
+  }
+}
+
+function clSendOtp() {
+  const v = document.getElementById('cl_id').value.trim();
+  if (!v) return toast('Enter e-mail or mobile first', 'error');
+  requestOtp(/^\d{10}$/.test(v) ? 'mobile' : 'email', v, document.getElementById('cl_hint'));
+}
+function csSendOtp() {
+  const e = document.getElementById('cs_email').value.trim(), m = document.getElementById('cs_mobile').value.trim();
+  if (e) requestOtp('email', e, document.getElementById('cs_hint'));
+  else if (m) requestOtp('mobile', m, document.getElementById('cs_hint'));
+  else toast('Enter e-mail or mobile first', 'error');
+}
+function csSendAadhaarOtp() {
+  const a = document.getElementById('cs_aadhaar').value.trim();
+  if (!/^\d{12}$/.test(a)) return toast('Enter your 12-digit Aadhaar number first', 'error');
+  requestOtp('aadhaar', a, document.getElementById('cs_ahint'));
+}
+
+async function clLogin() {
+  try {
+    const r = await API.call('/api/creator/login', { method: 'POST', body: { identifier: document.getElementById('cl_id').value.trim(), otp: document.getElementById('cl_otp').value.trim() } });
+    localStorage.setItem('creator_token', r.token);
+    toast('Welcome, ' + r.name + '!', 'ok'); boot();
+  } catch (e) { toast(e.message, 'error'); }
+}
+async function csSignup() {
+  try {
+    const r = await API.call('/api/creator/signup', { method: 'POST', body: {
+      name: document.getElementById('cs_name').value.trim(),
+      email: document.getElementById('cs_email').value.trim(),
+      mobile: document.getElementById('cs_mobile').value.trim(),
+      emailOtp: document.getElementById('cs_otp').value.trim(),
+      aadhaar: document.getElementById('cs_aadhaar').value.trim(),
+      aadhaarOtp: document.getElementById('cs_aotp').value.trim(),
+      pan: document.getElementById('cs_pan').value.trim().toUpperCase(),
+      accountHolder: document.getElementById('cs_holder').value.trim(),
+      accountNumber: document.getElementById('cs_acc').value.trim(),
+      ifsc: document.getElementById('cs_ifsc').value.trim().toUpperCase(),
+      bankName: document.getElementById('cs_bank').value.trim(),
+      branch: document.getElementById('cs_branch').value.trim()
+    }});
+    localStorage.setItem('creator_token', r.token);
+    toast('Creator account verified & created!', 'ok'); boot();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+function planLabel(p) {
+  if (!p) return '<span class="pill pending">set at approval</span>';
+  return p.mode === 'upfront' ? '<span class="pill info">Upfront ' + inr(p.amount) + '</span>' : '<span class="pill info">' + inr(p.rate) + ' / view</span>';
+}
+function statusPill(s) { return '<span class="pill ' + s + '">' + s + '</span>'; }
+
+async function boot() {
+  if (!ctoken()) return;
+  let me;
+  try { me = await API.call('/api/creator/me', { headers: {}, tokenKey: 'creator_token' }); }
+  catch { localStorage.removeItem('creator_token'); return; }
+  document.getElementById('authBox').style.display = 'none';
+  document.getElementById('dash').style.display = '';
+  document.getElementById('logoutBtn').style.display = '';
+  document.getElementById('dName').textContent = me.profile.name;
+
+  document.getElementById('stEarn').textContent = inr(me.totalEarnings);
+  document.getElementById('stContent').textContent = me.content.length;
+  document.getElementById('stApproved').textContent = me.content.filter(c => c.status === 'approved').length;
+  document.getElementById('stViews').textContent = me.content.reduce((s, c) => s + c.views, 0);
+
+  const tb = document.querySelector('#contentTable tbody');
+  tb.innerHTML = '';
+  document.getElementById('contentEmpty').style.display = me.content.length ? 'none' : '';
+  me.content.forEach(c => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td><div class="content-thumb" style="' + posterBg(c) + '">' + (c.thumbnail ? '' : (TYPE_EMOJI[c.type] || '')) + '</div></td>' +
+      '<td><b>' + esc(c.title) + '</b><br><span style="color:var(--muted);font-size:12px">uploaded ' + dt(c.uploadedAt) + '</span>' +
+      (c.status === 'rejected' && c.rejectReason ? '<br><span style="color:#ff8fa3;font-size:12px">Reason: ' + esc(c.rejectReason) + '</span>' : '') + '</td>' +
+      '<td>' + esc(c.typeLabel) + '<br><span style="color:var(--muted)">' + esc(c.language) + ' · ' + esc(c.ageRating) + '</span></td>' +
+      '<td>' + statusPill(c.status) + '</td>' +
+      '<td>' + planLabel(c.paymentPlan) + '</td>' +
+      '<td>' + c.views + '</td>' +
+      '<td><b style="color:var(--teal)">' + inr(c.earnings) + '</b></td>';
+    tb.appendChild(tr);
+  });
+
+  const eb = document.querySelector('#earnTable tbody');
+  eb.innerHTML = '';
+  me.content.filter(c => c.status === 'approved').forEach(c => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td>' + esc(c.title) + '</td><td>' + planLabel(c.paymentPlan) + '</td><td>' + c.views + '</td><td><b style="color:var(--teal)">' + inr(c.earnings) + '</b></td>';
+    eb.appendChild(tr);
+  });
+  document.getElementById('earnTotal').textContent = inr(me.totalEarnings);
+
+  const p = me.profile;
+  document.getElementById('profileBox').innerHTML =
+    '<b>Name:</b> ' + esc(p.name) + '<br><b>E-mail:</b> ' + esc(p.email) + '<br><b>Mobile:</b> ' + esc(p.mobile) +
+    '<br><b>Aadhaar:</b> XXXX XXXX ' + esc(p.aadhaarLast4) + ' <span class="pill approved">verified ✓</span>' +
+    '<br><b>PAN:</b> ' + esc(p.pan) +
+    '<br><b>Account holder:</b> ' + esc(p.bank.accountHolder) +
+    '<br><b>Account no.:</b> ' + esc(p.bank.accountNumber) +
+    '<br><b>IFSC:</b> ' + esc(p.bank.ifsc) +
+    '<br><b>Bank &amp; branch:</b> ' + esc(p.bank.bankName) + ', ' + esc(p.bank.branch);
+}
+
+async function doUpload() {
+  const btn = document.getElementById('upBtn');
+  const fd = new FormData();
+  fd.append('title', document.getElementById('up_title').value.trim());
+  fd.append('description', document.getElementById('up_desc').value.trim());
+  fd.append('type', document.getElementById('up_type').value);
+  fd.append('language', document.getElementById('up_lang').value);
+  fd.append('ageRating', document.getElementById('up_rating').value);
+  fd.append('seriesName', document.getElementById('up_series') ? document.getElementById('up_series').value.trim() : '');
+  fd.append('episode', document.getElementById('up_ep') ? document.getElementById('up_ep').value.trim() : '');
+  fd.append('videoUrl', document.getElementById('up_url').value.trim());
+  const vf = document.getElementById('up_video').files[0];
+  if (vf) fd.append('video', vf);
+  const tf = document.getElementById('up_thumb').files[0];
+  if (tf) fd.append('thumbnail', tf);
+  btn.disabled = true; btn.textContent = 'Uploading…';
+  try {
+    await API.call('/api/creator/content', { method: 'POST', body: fd, tokenKey: 'creator_token' });
+    toast('Submitted! The administrator will review it shortly.', 'ok');
+    ['up_title','up_desc','up_url'].forEach(i => document.getElementById(i).value = '');
+    document.getElementById('up_video').value = ''; document.getElementById('up_thumb').value = '';
+    showTab('content'); boot();
+  } catch (e) { toast(e.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Submit for Approval';
+}
+
+fetch('/api/meta').then(r => r.json()).then(m => {
+  const s = document.getElementById('up_lang');
+  m.languages.forEach(l => { const o = document.createElement('option'); o.value = o.textContent = l; s.appendChild(o); });
+});
+boot();
+</script>
+</body>
+</html>

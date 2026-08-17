@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin Panel — RangManch</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .review-video { width: 100%; max-height: 300px; border-radius: 10px; background: #000; margin: 12px 0; }
+  .plan-fields { background: #0f1116; border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="/"><span class="mark">R</span>Rang<span class="brand-2">Manch</span></a>
+  <span style="color:var(--muted);font-weight:700;font-size:14px">Admin Panel</span>
+  <div class="spacer"></div>
+  <a class="navlink" href="/">Viewer Site</a>
+  <button class="btn small ghost" id="logoutBtn" style="display:none" onclick="logout()">Sign Out</button>
+</div>
+
+<div class="wrap" id="loginBox" style="max-width:420px">
+  <div class="card">
+    <h2>🔐 Administrator login</h2>
+    <label>Admin password</label>
+    <input id="pw" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    <p class="hint" style="margin-top:8px">Demo password: <b>admin123</b> (changeable in data/settings.json)</p>
+    <button class="btn" style="width:100%;margin-top:14px" onclick="doLogin()">Login</button>
+  </div>
+</div>
+
+<div class="wrap" id="panel" style="display:none">
+  <div class="section-head" style="margin-top:14px">
+    <div style="flex:1">
+      <h1 class="page" style="margin:0">Platform control room</h1>
+      <p class="sub" style="margin:4px 0 0">Everything on the platform — creators, subscribers, content and money — in one place.</p>
+    </div>
+    <button class="btn small teal" onclick="downloadReport('/api/admin/report.xlsx','admin_token','rangmanch-admin-report.xlsx')">📥 Download Full Excel Report</button>
+  </div>
+
+  <div class="stat-grid" id="stats"></div>
+
+  <div class="tabs">
+    <button class="tab active" id="t_queue" onclick="showTab('queue')">🕵️ Approval Queue <span class="pill pending" id="qCount">0</span></button>
+    <button class="tab" id="t_content" onclick="showTab('content')">📼 All Content</button>
+    <button class="tab" id="t_creators" onclick="showTab('creators')">🎬 Creators</button>
+    <button class="tab" id="t_subs" onclick="showTab('subs')">👥 Subscribers</button>
+    <button class="tab" id="t_payouts" onclick="showTab('payouts')">💰 Payout Report</button>
+  </div>
+
+  <div id="tab_queue"></div>
+
+  <div id="tab_content" class="card" style="display:none">
+    <div class="table-scroll"><table class="data">
+      <thead><tr><th>Title</th><th>Creator</th><th>Type / Lang</th><th>Status</th><th>Plan</th><th>Views</th><th>Earnings</th><th></th></tr></thead>
+      <tbody id="allContentBody"></tbody>
+    </table></div>
+  </div>
+
+  <div id="tab_creators" class="card" style="display:none">
+    <div class="table-scroll"><table class="data">
+      <thead><tr><th>Creator</th><th>Contact</th><th>KYC</th><th>Bank details</th><th>Content</th><th>Earnings</th></tr></thead>
+      <tbody id="creatorsBody"></tbody>
+    </table></div>
+  </div>
+
+  <div id="tab_subs" class="card" style="display:none">
+    <div class="table-scroll"><table class="data">
+      <thead><tr><th>Subscriber</th><th>Contact</th><th>Age (Aadhaar-verified)</th><th>Plan</th><th>Total paid</th><th>Joined</th><th>Views counted</th></tr></thead>
+      <tbody id="subsBody"></tbody>
+    </table></div>
+  </div>
+
+  <div id="tab_payouts" class="card" style="display:none">
+    <h2>Payout liability by creator</h2>
+    <p class="hint">Upfront amounts are payable at approval; per-view amounts grow with verified views (full watch, no fast-forward, one per subscriber).</p>
+    <div class="table-scroll"><table class="data">
+      <thead><tr><th>Creator</th><th>PAN</th><th>Bank account</th><th>Total payable</th></tr></thead>
+      <tbody id="payoutBody"></tbody>
+    </table></div>
+    <h3 style="text-align:right;margin-top:14px">Grand total: <span id="payoutTotal" style="color:var(--teal)">₹0</span></h3>
+  </div>
+</div>
+
+<!-- review modal -->
+<div class="modal-back" id="reviewModal">
+  <div class="modal" style="max-width:620px">
+    <button class="close" onclick="closeReview()">✕</button>
+    <h2 id="rvTitle"></h2>
+    <p class="hint" id="rvMeta"></p>
+    <video class="review-video" id="rvVideo" controls></video>
+    <p id="rvDesc" style="color:var(--muted);font-size:14px"></p>
+
+    <div class="plan-fields">
+      <label style="margin-top:0">Payment plan for this content</label>
+      <select id="rvMode" onchange="planFields()">
+        <option value="upfront">1️⃣ Upfront payment (one-time, on approval)</option>
+        <option value="perview">2️⃣ View-based payment (rate × verified views)</option>
+      </select>
+      <div id="rvUpfront"><label>Upfront amount (₹)</label><input id="rvAmount" type="number" min="1" placeholder="e.g. 25000"></div>
+      <div id="rvPerview" style="display:none"><label>Rate per verified view (₹)</label><input id="rvRate" type="number" min="0.1" step="0.1" placeholder="e.g. 2"></div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:18px">
+      <button class="btn teal" style="flex:1" onclick="decide('approve')">✅ Approve &amp; Telecast</button>
+      <button class="btn danger" style="flex:1" onclick="decide('reject')">❌ Reject</button>
+    </div>
+    <label>Rejection reason (only if rejecting)</label>
+    <input id="rvReason" placeholder="e.g. Audio quality too low">
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+function atoken() { return localStorage.getItem('admin_token'); }
+function logout() { localStorage.removeItem('admin_token'); location.reload(); }
+const A = { tokenKey: 'admin_token' };
+
+async function doLogin() {
+  try {
+    const r = await API.call('/api/admin/login', { method: 'POST', body: { password: document.getElementById('pw').value } });
+    localStorage.setItem('admin_token', r.token);
+    boot();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+function showTab(t) {
+  for (const x of ['queue','content','creators','subs','payouts']) {
+    document.getElementById('tab_' + x).style.display = x === t ? '' : 'none';
+    document.getElementById('t_' + x).classList.toggle('active', x === t);
+  }
+}
+
+let allContent = [];
+
+async function boot() {
+  if (!atoken()) return;
+  let ov;
+  try { ov = await API.call('/api/admin/overview', A); }
+  catch { localStorage.removeItem('admin_token'); return; }
+  document.getElementById('loginBox').style.display = 'none';
+  document.getElementById('panel').style.display = '';
+  document.getElementById('logoutBtn').style.display = '';
+
+  const c = ov.counts;
+  document.getElementById('stats').innerHTML =
+    stat(c.creators, 'Creators') + stat(c.subscribers, 'Subscribers') +
+    stat(c.activeSubscribers, 'Active plans') + stat(inr(c.subscriptionRevenue), 'Subscription revenue') +
+    stat(c.contentTotal, 'Total uploads') + stat(c.pending, 'Awaiting review') +
+    stat(c.approved, 'Live titles') + stat(c.totalViews, 'Verified views') +
+    stat(inr(c.totalPayout), 'Payout liability');
+
+  const [contentList, creators, subs] = await Promise.all([
+    API.call('/api/admin/content', A),
+    API.call('/api/admin/creators', A),
+    API.call('/api/admin/subscribers', A)
+  ]);
+  allContent = contentList;
+  renderQueue(contentList.filter(x => x.status === 'pending'));
+  renderAllContent(contentList);
+  renderCreators(creators);
+  renderSubs(subs);
+  renderPayouts(creators);
+}
+function stat(n, l) { return '<div class="stat"><div class="n">' + n + '</div><div class="l">' + l + '</div></div>'; }
+
+function renderQueue(pending) {
+  document.getElementById('qCount').textContent = pending.length;
+  const box = document.getElementById('tab_queue');
+  if (!pending.length) { box.innerHTML = '<div class="card"><div class="empty">🎉 Nothing waiting for review. New uploads will appear here.</div></div>'; return; }
+  box.innerHTML = '';
+  pending.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'card'; card.style.marginBottom = '14px';
+    card.innerHTML = '<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">' +
+      '<div style="flex:1;min-width:220px"><b style="font-size:17px">' + esc(item.title) + '</b>' +
+      '<div style="color:var(--muted);font-size:13px;margin-top:4px">' + esc(item.typeLabel) + ' · ' + esc(item.language) + ' · rated ' + esc(item.ageRating) +
+      ' · by <b>' + esc(item.creatorName) + '</b> · uploaded ' + dt(item.uploadedAt) + '</div></div>' +
+      '<button class="btn small">Review ▶</button></div>';
+    card.querySelector('button').onclick = () => openReview(item);
+    box.appendChild(card);
+  });
+}
+
+function renderAllContent(list) {
+  const tb = document.getElementById('allContentBody'); tb.innerHTML = '';
+  list.forEach(item => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td><b>' + esc(item.title) + '</b>' + (item.rejectReason ? '<br><span style="color:#ff8fa3;font-size:12px">' + esc(item.rejectReason) + '</span>' : '') + '</td>' +
+      '<td>' + esc(item.creatorName) + '</td>' +
+      '<td>' + esc(item.typeLabel) + '<br><span style="color:var(--muted)">' + esc(item.language) + ' · ' + esc(item.ageRating) + '</span></td>' +
+      '<td><span class="pill ' + item.status + '">' + item.status + '</span></td>' +
+      '<td>' + plan(item.paymentPlan) + '</td>' +
+      '<td>' + item.views + '</td>' +
+      '<td style="color:var(--teal)"><b>' + inr(item.earnings) + '</b></td>' +
+      '<td><button class="btn small secondary">Re-review</button></td>';
+    tr.querySelector('button').onclick = () => openReview(item);
+    tb.appendChild(tr);
+  });
+}
+function plan(p) {
+  if (!p) return '<span class="pill pending">not set</span>';
+  return p.mode === 'upfront' ? 'Upfront ' + inr(p.amount) : inr(p.rate) + ' / view';
+}
+
+function renderCreators(list) {
+  const tb = document.getElementById('creatorsBody'); tb.innerHTML = '';
+  list.forEach(c => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td><b>' + esc(c.name) + '</b><br><span style="color:var(--muted);font-size:12px">joined ' + dt(c.createdAt) + '</span></td>' +
+      '<td>' + esc(c.email) + '<br>' + esc(c.mobile) + '</td>' +
+      '<td>Aadhaar XXXX-' + esc(c.aadhaarLast4) + ' <span class="pill approved">✓</span><br>PAN: <b>' + esc(c.pan) + '</b></td>' +
+      '<td style="font-size:13px">' + esc(c.bank.accountHolder) + '<br>A/c ' + esc(c.bank.accountNumber) + '<br>' + esc(c.bank.ifsc) + ' · ' + esc(c.bank.bankName) + ', ' + esc(c.bank.branch) + '</td>' +
+      '<td>' + c.contentCount + '</td>' +
+      '<td style="color:var(--teal)"><b>' + inr(c.earnings) + '</b></td>';
+    tb.appendChild(tr);
+  });
+}
+
+function renderSubs(list) {
+  const tb = document.getElementById('subsBody'); tb.innerHTML = '';
+  if (!list.length) { tb.innerHTML = '<tr><td colspan="7" class="empty">No subscribers yet.</td></tr>'; return; }
+  list.forEach(s => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td><b>' + esc(s.name) + '</b></td>' +
+      '<td>' + esc(s.email) + '<br>' + esc(s.mobile) + '</td>' +
+      '<td>' + s.age + ' yrs <span class="pill approved">Aadhaar ✓ (XXXX-' + esc(s.aadhaarLast4) + ')</span></td>' +
+      '<td>' + esc(s.plan) + ' <span class="pill ' + (s.active ? 'active' : 'expired') + '">' + (s.active ? 'active' : 'expired') + '</span>' +
+      (s.expiresAt ? '<br><span style="color:var(--muted);font-size:12px">till ' + dt(s.expiresAt) + '</span>' : '') + '</td>' +
+      '<td style="color:var(--teal)"><b>' + inr(s.totalPaid) + '</b></td>' +
+      '<td>' + dt(s.createdAt) + '</td>' +
+      '<td>' + s.viewsCounted + '</td>';
+    tb.appendChild(tr);
+  });
+}
+
+function renderPayouts(creators) {
+  const tb = document.getElementById('payoutBody'); tb.innerHTML = '';
+  let total = 0;
+  creators.forEach(c => {
+    total += c.earnings;
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td><b>' + esc(c.name) + '</b></td><td>' + esc(c.pan) + '</td>' +
+      '<td style="font-size:13px">' + esc(c.bank.accountHolder) + ' · ' + esc(c.bank.accountNumber) + ' · ' + esc(c.bank.ifsc) + '</td>' +
+      '<td style="color:var(--teal)"><b>' + inr(c.earnings) + '</b></td>';
+    tb.appendChild(tr);
+  });
+  document.getElementById('payoutTotal').textContent = inr(total);
+}
+
+/* review modal */
+let reviewing = null;
+function openReview(item) {
+  reviewing = item;
+  document.getElementById('rvTitle').textContent = item.title;
+  document.getElementById('rvMeta').textContent = item.typeLabel + ' · ' + item.language + ' · rated ' + item.ageRating + ' · by ' + item.creatorName + (item.seriesName ? ' · ' + item.seriesName + ' Ep ' + item.episode : '');
+  document.getElementById('rvVideo').src = item.videoUrl;
+  document.getElementById('rvDesc').textContent = item.description || '';
+  if (item.paymentPlan) {
+    document.getElementById('rvMode').value = item.paymentPlan.mode;
+    document.getElementById('rvAmount').value = item.paymentPlan.amount || '';
+    document.getElementById('rvRate').value = item.paymentPlan.rate || '';
+  }
+  planFields();
+  document.getElementById('reviewModal').classList.add('open');
+}
+function closeReview() {
+  document.getElementById('reviewModal').classList.remove('open');
+  document.getElementById('rvVideo').pause();
+}
+function planFields() {
+  const m = document.getElementById('rvMode').value;
+  document.getElementById('rvUpfront').style.display = m === 'upfront' ? '' : 'none';
+  document.getElementById('rvPerview').style.display = m === 'perview' ? '' : 'none';
+}
+async function decide(action) {
+  try {
+    await API.call('/api/admin/content/' + reviewing.id + '/decision', { method: 'POST', tokenKey: 'admin_token', body: {
+      action,
+      paymentMode: document.getElementById('rvMode').value,
+      amount: document.getElementById('rvAmount').value,
+      rate: document.getElementById('rvRate').value,
+      reason: document.getElementById('rvReason').value
+    }});
+    toast(action === 'approve' ? '✅ Approved — now live on the platform' : 'Rejected and creator informed', 'ok');
+    closeReview(); boot();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+boot();
+</script>
+</body>
+</html>
